@@ -44,7 +44,6 @@ public class MainActivity extends AppCompatActivity implements AdapterView.OnIte
         setContentView(R.layout.activity_main);
 
         // Applications
-
         ListTxt = findViewById(R.id.ListTxt);
         listview = findViewById(R.id.listview);
         BTDevices = new ArrayList<>();
@@ -53,6 +52,7 @@ public class MainActivity extends AppCompatActivity implements AdapterView.OnIte
         IntentFilter filter = new IntentFilter(BluetoothDevice.ACTION_BOND_STATE_CHANGED);
         registerReceiver(mBroadcastReceiver3, filter);
 
+        //Defining Bluetooth Adapter to default value
         BA = BluetoothAdapter.getDefaultAdapter();
 
         listview.setOnItemClickListener(MainActivity.this);
@@ -104,8 +104,8 @@ public class MainActivity extends AppCompatActivity implements AdapterView.OnIte
         }
     }
 
-
-    public void enableDisableBT() { // Enables the bluetooth of the device
+    // Enables the bluetooth of the device
+    public void enableDisableBT() {
 
         if (ContextCompat.checkSelfPermission(MainActivity.this, Manifest.permission.BLUETOOTH_CONNECT) != PackageManager.PERMISSION_GRANTED) {
             ActivityCompat.requestPermissions(MainActivity.this, new String[]{Manifest.permission.BLUETOOTH_CONNECT}, 1);
@@ -302,6 +302,7 @@ public class MainActivity extends AppCompatActivity implements AdapterView.OnIte
 
     }
 
+    // UPDATE: Preparing New activity once ESP32 is connected to display data
     public void OpenDataDisplay (){
         Intent dataintent =new Intent(this, DataDisplay.class);
         startActivity(dataintent);

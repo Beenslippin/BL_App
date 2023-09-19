@@ -37,6 +37,9 @@ public class BluetoothConnectionService {
     private ConnectedThread mConnectedThread;
     ProgressBar mProgressBar;
 
+    // This Service will use Bluetooth Sockets.
+    // Bluetooth sockets is the connection point that allows for an application to exchange data
+    // With another bluetooth device.
     public BluetoothConnectionService(Context context) {
        mContext =context;
         BA = BluetoothAdapter.getDefaultAdapter();
@@ -189,7 +192,8 @@ public class BluetoothConnectionService {
         private final InputStream mmInStream;
         private final OutputStream mmOutStream;
 
-        private ConnectedThread(BluetoothSocket socket){ //Default Constructor
+        public ConnectedThread(BluetoothSocket socket){ //Default Constructor Connected Thread will be Managing Connection.
+            // (Point of time of when a connection has been made)
             Log.d(TAG,"ConnectedThread: Starting");
 
             //Declaring Variables
@@ -197,6 +201,41 @@ public class BluetoothConnectionService {
             InputStream tmpIn = null;
             OutputStream tmpOut = null;
 
+            //Connection has been established
+            Toast.makeText(mContext, "Connection has been made", Toast.LENGTH_SHORT).show();
+
+            try {
+                tmpIn = mmSocket.getInputStream();
+                tmpOut = mmSocket.getOutputStream();
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
+
+            mmInStream = tmpIn;
+            mmOutStream = tmpOut;
+        }
+        public void run (){
+            //Creating a Byte Array object that will collect the input from the input stream
+
+            //Buffer store for input stream
+            byte [] buffer = new byte[1024];
+
+            // Integer object that will read the input from the input stream
+            // Return from read()
+            int bytes;
+
+            // Keep listening to Input Stream until new information is IN (exception)
+            while(true){
+                try {
+                    bytes = mmInStream.read(buffer);
+                    String incomingMessage = new String(buffer, 0 , bytes); // Convert Byte to a string.
+                    Log.d(TAG,"InputStream: " + incomingMessage);
+                } catch (IOException e) {
+                    e.printStackTrace();
+                    break;
+                }
+
+            }
         }
 
     }
