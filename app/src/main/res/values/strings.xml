@@ -1,0 +1,8 @@
+<resources>
+    <string name="app_name">My Application</string>
+    <string name="sync" />
+    <string name="sync_your_sonic_gauge_to_application" />
+    <string name="sonic_gauge" />
+    <string name="available_devices" />
+    <string name="discover">Discover</string>
+</resources>
