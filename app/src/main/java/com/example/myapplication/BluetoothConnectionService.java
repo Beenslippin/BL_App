@@ -8,11 +8,14 @@ import android.bluetooth.BluetoothServerSocket;
 import android.bluetooth.BluetoothSocket;
 import android.content.Context;
 import android.nfc.Tag;
+import android.renderscript.ScriptGroup;
 import android.util.Log;
 import android.widget.ProgressBar;
 import android.widget.Toast;
 
 import java.io.IOException;
+import java.io.InputStream;
+import java.io.OutputStream;
 import java.util.UUID;
 
 public class BluetoothConnectionService {
@@ -182,6 +185,19 @@ public class BluetoothConnectionService {
     }
 
     private class ConnectedThread extends Thread {
+        private final BluetoothSocket mmSocket;
+        private final InputStream mmInStream;
+        private final OutputStream mmOutStream;
+
+        private ConnectedThread(BluetoothSocket socket){ //Default Constructor
+            Log.d(TAG,"ConnectedThread: Starting");
+
+            //Declaring Variables
+            mmSocket = socket;
+            InputStream tmpIn = null;
+            OutputStream tmpOut = null;
+
+        }
 
     }
 }
