@@ -1,6 +1,7 @@
 package com.example.myapplication;
 
 import androidx.annotation.NonNull;
+import androidx.annotation.RequiresApi;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.core.app.ActivityCompat;
 import androidx.core.content.ContextCompat;
@@ -26,10 +27,10 @@ import android.widget.TextView;
 import android.widget.Toast;
 
 import java.util.ArrayList;
+import java.util.UUID;
 
 public class MainActivity extends AppCompatActivity implements AdapterView.OnItemClickListener {
     private static final String TAG = "MainActivity";
-
 
     TextView ListTxt;
     ListView listview;
@@ -37,8 +38,10 @@ public class MainActivity extends AppCompatActivity implements AdapterView.OnIte
     public ArrayList<BluetoothDevice> BTDevices = new ArrayList<>();
     public DeviceListAdapter DLA;
 
-
-    @Override
+    BluetoothConnectionService mBluetoothConnection;
+     private static final UUID MY_UUID_INSECURE =
+                UUID.fromString("8ce255c0-200a-11e0-ac64-0800200c9a66"); //Unique identifier@Override
+    BluetoothDevice mBTDevice;
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
@@ -61,7 +64,6 @@ public class MainActivity extends AppCompatActivity implements AdapterView.OnIte
             enableDisableBT();
             Log.d(TAG, "OnClick: EnablingBluetooth");
         }
-
     }
 
     // PERMISSION GRANTING:
@@ -76,7 +78,7 @@ public class MainActivity extends AppCompatActivity implements AdapterView.OnIte
                     Toast.makeText(this, "Permission has been granted", Toast.LENGTH_SHORT).show();
                     Log.d(TAG, "Bluetooth: Connect Permission Granted");
 
-                } else if (grantResults.length > 0 && grantResults[0] != PackageManager.PERMISSION_GRANTED) {
+                } else if (grantResults.length > 0) {
                     Toast.makeText(this, "Permission is Required before Proceeding", Toast.LENGTH_SHORT).show();
                 }
                 break;
@@ -86,7 +88,7 @@ public class MainActivity extends AppCompatActivity implements AdapterView.OnIte
                     Toast.makeText(this, "Permission has been granted", Toast.LENGTH_SHORT).show();
                     Log.d(TAG, "Bluetooth: Scan Permission Granted");
 
-                } else if (grantResults.length > 0 && grantResults[0] != PackageManager.PERMISSION_GRANTED) {
+                } else if (grantResults.length > 0) {
                     Toast.makeText(this, "Permission is Required before Proceeding", Toast.LENGTH_SHORT).show();
                 }
                 break;
@@ -96,11 +98,15 @@ public class MainActivity extends AppCompatActivity implements AdapterView.OnIte
                     Toast.makeText(this, "Permission has been granted", Toast.LENGTH_SHORT).show();
                     Log.d(TAG, "");
 
-                } else if (grantResults.length > 0 && grantResults[0] != PackageManager.PERMISSION_GRANTED) {
+                } else if (grantResults.length > 0) {
                     Toast.makeText(this, "Permission is Required before Proceeding", Toast.LENGTH_SHORT).show();
                 }
                 break;
-
+            case 4:
+                if (grantResults.length > 0 && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
+                    Toast.makeText(this,"Location Has been Permitted", Toast.LENGTH_SHORT).show();
+                }
+                break;
         }
     }
 
@@ -108,7 +114,9 @@ public class MainActivity extends AppCompatActivity implements AdapterView.OnIte
     public void enableDisableBT() {
 
         if (ContextCompat.checkSelfPermission(MainActivity.this, Manifest.permission.BLUETOOTH_CONNECT) != PackageManager.PERMISSION_GRANTED) {
-            ActivityCompat.requestPermissions(MainActivity.this, new String[]{Manifest.permission.BLUETOOTH_CONNECT}, 1);
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+                ActivityCompat.requestPermissions(MainActivity.this, new String[]{Manifest.permission.BLUETOOTH_CONNECT}, 1);
+            }
         }
         if (ContextCompat.checkSelfPermission(MainActivity.this, Manifest.permission.BLUETOOTH_CONNECT) == PackageManager.PERMISSION_GRANTED) {
             if (BA == null) {
@@ -137,17 +145,23 @@ public class MainActivity extends AppCompatActivity implements AdapterView.OnIte
     public void discover(View view) { //for discovering available devices
 
         if (ContextCompat.checkSelfPermission(MainActivity.this, Manifest.permission.BLUETOOTH_SCAN) != PackageManager.PERMISSION_GRANTED) {
-            ActivityCompat.requestPermissions(MainActivity.this, new String[]{Manifest.permission.BLUETOOTH_SCAN}, 2);
+
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+                ActivityCompat.requestPermissions(MainActivity.this, new String[]{Manifest.permission.BLUETOOTH_SCAN}, 2);
+            }
         }
-
-        if (ContextCompat.checkSelfPermission(MainActivity.this, Manifest.permission.BLUETOOTH_SCAN) == PackageManager.PERMISSION_GRANTED) {
-
+        if(!BA.isEnabled()){
+            enableDisableBT();
+        }
+         checkBTPermissions();
+        if (ContextCompat.checkSelfPermission(MainActivity.this, Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED  ||
+                ContextCompat.checkSelfPermission(this, Manifest.permission.ACCESS_COARSE_LOCATION) == PackageManager.PERMISSION_GRANTED) {
             if (BA.isDiscovering()) {
                 BA.cancelDiscovery();
                 Log.d(TAG, "btnDiscover: Canceling discovery.");
 
                 //check BT permissions in manifest
-                checkBTPermissions();
+                //checkBTPermissions();
 
                 BA.startDiscovery();
                 IntentFilter discoverDevicesIntent = new IntentFilter(BluetoothDevice.ACTION_FOUND);
@@ -156,17 +170,16 @@ public class MainActivity extends AppCompatActivity implements AdapterView.OnIte
 
             if (!BA.isDiscovering()) {
                 Log.d(TAG, "Discover: Discovery is Starting");
-                checkBTPermissions();
-
+                //checkBTPermissions();
+                BA.startDiscovery();
                 IntentFilter discoverDeviceIntent = new IntentFilter(BluetoothDevice.ACTION_FOUND);
                 registerReceiver(mBroadcastReceiver2, discoverDeviceIntent);
-                BA.startDiscovery();
+
             }
         }
-
-
     }
 
+    //Initializing and Logging the State of BLUETOOTH
     private final BroadcastReceiver mBroadcastReceiver1 = new BroadcastReceiver() {
         public void onReceive(Context context, Intent intent) { //Allows to follow the states of bluetooth and log them.*/
             String action = intent.getAction();
@@ -189,13 +202,17 @@ public class MainActivity extends AppCompatActivity implements AdapterView.OnIte
             }
         }
     };
+    //Discovery Broadcaster
     private final BroadcastReceiver mBroadcastReceiver2 = new BroadcastReceiver() {
+        @Override
         public void onReceive(Context context, Intent intent) {
             final String action = intent.getAction();
             Log.d(TAG, "OnReceive: Action Found");
 
             if (ContextCompat.checkSelfPermission(MainActivity.this, Manifest.permission.BLUETOOTH_CONNECT) != PackageManager.PERMISSION_GRANTED) {
-                ActivityCompat.requestPermissions(MainActivity.this, new String[]{Manifest.permission.BLUETOOTH_CONNECT}, 1);
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+                    ActivityCompat.requestPermissions(MainActivity.this, new String[]{Manifest.permission.BLUETOOTH_CONNECT}, 1);
+                }
             }
             if (ContextCompat.checkSelfPermission(MainActivity.this, Manifest.permission.BLUETOOTH_CONNECT) == PackageManager.PERMISSION_GRANTED) {
                 if (BluetoothDevice.ACTION_FOUND.equals(action)) {
@@ -204,17 +221,18 @@ public class MainActivity extends AppCompatActivity implements AdapterView.OnIte
                     BluetoothDevice device = intent.getParcelableExtra(BluetoothDevice.EXTRA_DEVICE); // EXTRA = Parcel device, allows you to store device
                     BTDevices.add(device);
 
+                    assert device != null;
                     Log.d(TAG, "OnReceive:" + device.getName() + ": " + device.getAddress());
                     DLA = new DeviceListAdapter(context, R.layout.device_adapter_view, BTDevices);
                     listview.setAdapter(DLA);
-
-
                 }
             }
         }
     };
 
+    //Bonding States
     private final BroadcastReceiver mBroadcastReceiver3 = new BroadcastReceiver() {
+        @RequiresApi(api = Build.VERSION_CODES.S)
         @Override
         public void onReceive(Context context, Intent intent) {
             final String action = intent.getAction();
@@ -250,16 +268,21 @@ public class MainActivity extends AppCompatActivity implements AdapterView.OnIte
      * NOTE: This will only execute on versions > LOLLIPOP because it is not needed otherwise.
      */
     private void checkBTPermissions() {
-        if (Build.VERSION.SDK_INT > Build.VERSION_CODES.LOLLIPOP) {
-            int permissionCheck = this.checkSelfPermission("Manifest.permission.ACCESS_FINE_LOCATION");
-            permissionCheck += this.checkSelfPermission("Manifest.permission.ACCESS_COARSE_LOCATION");
-            if (permissionCheck != 0) {
-
-                this.requestPermissions(new String[]{Manifest.permission.ACCESS_FINE_LOCATION, Manifest.permission.ACCESS_COARSE_LOCATION}, 1001); //Any number
-            }
-        } else {
-            Log.d(TAG, "checkBTPermissions: No need to check permissions. SDK version < LOLLIPOP.");
-        }
+       if (ContextCompat.checkSelfPermission(MainActivity.this, Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED  ||
+               ContextCompat.checkSelfPermission(this, Manifest.permission.ACCESS_COARSE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
+           ActivityCompat.requestPermissions(MainActivity.this, new String[]{Manifest.permission.ACCESS_FINE_LOCATION,Manifest.permission.ACCESS_COARSE_LOCATION}, 4);
+           Log.d(TAG,"Location Request has been requested");
+       }
+//        if (Build.VERSION.SDK_INT > Build.VERSION_CODES.S) {
+//            int permissionCheck = this.checkSelfPermission("Manifest.permission.ACCESS_FINE_LOCATION");
+//            permissionCheck += this.checkSelfPermission("Manifest.permission.ACCESS_COARSE_LOCATION");
+//            if (permissionCheck != 0) {
+//
+//                this.requestPermissions(new String[]{Manifest.permission.ACCESS_FINE_LOCATION, Manifest.permission.ACCESS_COARSE_LOCATION}, 1001); //Any number
+//            }
+//        } else {
+//            Log.d(TAG, "checkBTPermissions: No need to check permissions. SDK version < LOLLIPOP.");
+//        }
     }
 
     protected void onDestroy() { // Disables Broadcast to allow for other resources to be used.
@@ -270,7 +293,8 @@ public class MainActivity extends AppCompatActivity implements AdapterView.OnIte
         unregisterReceiver(mBroadcastReceiver3);
     }
 
-
+    // When A Device is clicked
+    @RequiresApi(api = Build.VERSION_CODES.S)
     @Override
     public void onItemClick(AdapterView<?> adapterView, View view, int i, long l) {
         // Permission Check for Scan and Connect
@@ -287,6 +311,7 @@ public class MainActivity extends AppCompatActivity implements AdapterView.OnIte
         if (ContextCompat.checkSelfPermission(MainActivity.this, Manifest.permission.BLUETOOTH_CONNECT) == PackageManager.PERMISSION_GRANTED) {
             Log.d(TAG, "OnItemClick: Device has been clicked on");
 
+            // Save Name and Address
             String deviceName = BTDevices.get(i).getName();
             String DeviceAddress = BTDevices.get(i).getAddress();
 
@@ -301,6 +326,12 @@ public class MainActivity extends AppCompatActivity implements AdapterView.OnIte
         }
 
     }
+
+    // Starting the Connection to the device.
+        public void startBTConnection(BluetoothDevice device, UUID uuid){
+            Log.d(TAG,"StartBTConnection: Initializing RFCOM Bluetooth Connection");
+            mBluetoothConnection.startClient(device,uuid);
+        }
 
     // UPDATE: Preparing New activity once ESP32 is connected to display data
     public void OpenDataDisplay (){

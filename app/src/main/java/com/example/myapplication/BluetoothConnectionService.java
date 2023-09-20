@@ -1,14 +1,11 @@
 package com.example.myapplication;
 
-import android.annotation.SuppressLint;
-import android.app.ProgressDialog;
+
 import android.bluetooth.BluetoothAdapter;
 import android.bluetooth.BluetoothDevice;
 import android.bluetooth.BluetoothServerSocket;
 import android.bluetooth.BluetoothSocket;
 import android.content.Context;
-import android.nfc.Tag;
-import android.renderscript.ScriptGroup;
 import android.util.Log;
 import android.widget.ProgressBar;
 import android.widget.Toast;
@@ -16,20 +13,17 @@ import android.widget.Toast;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
+import java.nio.charset.Charset;
 import java.util.UUID;
 
 public class BluetoothConnectionService {
     private static final String TAG = "BluetoothConnectionService";
-
     private static final String appName = "SonicAPP";
-
     private static final UUID MY_UUID_INSECURE =
             UUID.fromString("8ce255c0-200a-11e0-ac64-0800200c9a66"); //Unique identifier
     private final BluetoothAdapter BA;
     Context mContext;
-
     private AcceptThread mInsecureAcceptThread;
-
     private ConnectThread mConnectThread;
     private BluetoothDevice mmDevice;
     private UUID deviceUUID; //global UUID
@@ -231,12 +225,48 @@ public class BluetoothConnectionService {
                     String incomingMessage = new String(buffer, 0 , bytes); // Convert Byte to a string.
                     Log.d(TAG,"InputStream: " + incomingMessage);
                 } catch (IOException e) {
-                    e.printStackTrace();
+                    Log.e(TAG, "READING: Error when reading Input Stream " + e.getMessage());
                     break;
                 }
-
             }
         }
+        //WRITE METHOD:
+        // Responsible of writing to the Output stream
+        // Called from Main activity to send data to the Device
+        public void write(byte[] bytes){
+        String text = new String (bytes, Charset.defaultCharset()); // convert bytes to a string before sending
+        Log.d(TAG,"WRITE: Writing to output stream");
+            try {
+                mmOutStream.write(bytes);
+            } catch (IOException e) {
+                Log.e(TAG,"WRITE: Error writing to Output Stream =" + e.getMessage()); // Entelligent log display what error occurred
+            }
+        }
+        // CANCEL METHOD:
+        // Called from Main Activity to Shutdown the connection
+        public void cancel(){
+            try{
+                mmSocket.close();
+            }catch(IOException e){  }
+        }
+    }
+    private void connected(BluetoothSocket mSocket, BluetoothDevice mmDevice) {
 
+        Log.d(TAG,"CONNECTED: Starting");
+        // Start method to manage the connection, Perform Output Stream transmission
+        // & Grab Input Stream transmission
+        mConnectedThread = new ConnectedThread(mSocket);
+        mConnectedThread.start();
+    }
+    // WRITE METHOD: as the connected thread wont be able to be accessed by main activity
+    // Need to implement a Write Method to access ConnectionService
+    // Which can then access the Connected Thread
+    public void write(byte[] out ){
+        // Create a temporary ConnectedThread object
+        ConnectedThread r;
+
+        // Then Synchronise a copy of the ConnectedThread & Perform Write
+        Log.d(TAG,"WRITE: Write Called");
+        mConnectedThread.write(out);
     }
 }

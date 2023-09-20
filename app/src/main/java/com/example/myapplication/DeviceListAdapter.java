@@ -42,12 +42,7 @@ public class DeviceListAdapter extends ArrayAdapter<BluetoothDevice> {
 
             if (deviceName != null) {
 
-                if (ActivityCompat.checkSelfPermission(DeviceListAdapter.this.getContext(), Manifest.permission.BLUETOOTH_CONNECT) != PackageManager.PERMISSION_GRANTED) {
-                    ActivityCompat.requestPermissions((Activity) DeviceListAdapter.this.getContext(), new String[]{Manifest.permission.BLUETOOTH_CONNECT}, 1);
-                }
-
-                if  (ContextCompat.checkSelfPermission(DeviceListAdapter.this.getContext(), Manifest.permission.BLUETOOTH_CONNECT) == PackageManager.PERMISSION_GRANTED)
-                { deviceName.setText(device.getName());}
+                deviceName.setText(device.getName());
             }
             if (deviceAdress != null) {
                 deviceAdress.setText(device.getAddress());
