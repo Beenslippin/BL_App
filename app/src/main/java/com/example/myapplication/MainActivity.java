@@ -7,6 +7,7 @@ import androidx.core.app.ActivityCompat;
 import androidx.core.content.ContextCompat;
 
 import android.Manifest;
+import android.annotation.SuppressLint;
 import android.bluetooth.BluetoothAdapter;
 import android.bluetooth.BluetoothDevice;
 import android.content.BroadcastReceiver;
@@ -20,23 +21,30 @@ import android.os.Bundle;
 import android.util.Log;
 import android.view.View;
 import android.widget.AdapterView;
-import android.widget.Button;
-import android.widget.Filter;
 import android.widget.ListView;
 import android.widget.TextView;
 import android.widget.Toast;
 
+import java.nio.charset.Charset;
 import java.util.ArrayList;
 import java.util.UUID;
 
 public class MainActivity extends AppCompatActivity implements AdapterView.OnItemClickListener {
     private static final String TAG = "MainActivity";
 
+    public MainActivity(){ // Initiating Permissions Checks On Start up, Might need to be changed if not Working
+        checkBTPermissions();
+        if (!BA.isEnabled()) {
+            enableDisableBT();
+            Log.d(TAG, "OnClick: EnablingBluetooth and Requesting permission");
+        }
+    }
     TextView ListTxt;
     ListView listview;
     BluetoothAdapter BA;
     public ArrayList<BluetoothDevice> BTDevices = new ArrayList<>();
     public DeviceListAdapter DLA;
+
 
     BluetoothConnectionService mBluetoothConnection;
      private static final UUID MY_UUID_INSECURE =
@@ -58,12 +66,9 @@ public class MainActivity extends AppCompatActivity implements AdapterView.OnIte
         //Defining Bluetooth Adapter to default value
         BA = BluetoothAdapter.getDefaultAdapter();
 
+        //Item Listener when Device displayed is clicked
         listview.setOnItemClickListener(MainActivity.this);
 
-        if (!BA.isEnabled()) {
-            enableDisableBT();
-            Log.d(TAG, "OnClick: EnablingBluetooth");
-        }
     }
 
     // PERMISSION GRANTING:
@@ -142,8 +147,10 @@ public class MainActivity extends AppCompatActivity implements AdapterView.OnIte
         }
     }
 
-    public void discover(View view) { //for discovering available devices
+    //for discovering available devices
+    public void discover(View view) {
 
+        checkBTPermissions();
         if (ContextCompat.checkSelfPermission(MainActivity.this, Manifest.permission.BLUETOOTH_SCAN) != PackageManager.PERMISSION_GRANTED) {
 
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
@@ -153,7 +160,7 @@ public class MainActivity extends AppCompatActivity implements AdapterView.OnIte
         if(!BA.isEnabled()){
             enableDisableBT();
         }
-         checkBTPermissions();
+
         if (ContextCompat.checkSelfPermission(MainActivity.this, Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED  ||
                 ContextCompat.checkSelfPermission(this, Manifest.permission.ACCESS_COARSE_LOCATION) == PackageManager.PERMISSION_GRANTED) {
             if (BA.isDiscovering()) {
@@ -202,6 +209,8 @@ public class MainActivity extends AppCompatActivity implements AdapterView.OnIte
             }
         }
     };
+
+
     //Discovery Broadcaster
     private final BroadcastReceiver mBroadcastReceiver2 = new BroadcastReceiver() {
         @Override
@@ -245,8 +254,12 @@ public class MainActivity extends AppCompatActivity implements AdapterView.OnIte
                     ActivityCompat.requestPermissions(MainActivity.this, new String[]{Manifest.permission.BLUETOOTH_CONNECT}, 1);
                 }
                 if (ContextCompat.checkSelfPermission(MainActivity.this, Manifest.permission.BLUETOOTH_CONNECT) == PackageManager.PERMISSION_GRANTED) {
+
+                    //When a Bond is created (Pairing is Initialized) these if Statements will be executed
                     if (device1.getBondState() == BluetoothDevice.BOND_BONDED) {
                         Log.d(TAG, "BroadcastReceiver: BOND_BONDED");
+                        mBTDevice = device1; //Assign global BTdevice to the Device its Paired with
+                        StartConnection(); //*** CHECK MIGHT NOT WORK
                     }
                     //case 2: Creating a Bond
                     if (device1.getBondState() == BluetoothDevice.BOND_BONDED) {
@@ -269,7 +282,7 @@ public class MainActivity extends AppCompatActivity implements AdapterView.OnIte
      */
     private void checkBTPermissions() {
        if (ContextCompat.checkSelfPermission(MainActivity.this, Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED  ||
-               ContextCompat.checkSelfPermission(this, Manifest.permission.ACCESS_COARSE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
+                ContextCompat.checkSelfPermission(this, Manifest.permission.ACCESS_COARSE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
            ActivityCompat.requestPermissions(MainActivity.this, new String[]{Manifest.permission.ACCESS_FINE_LOCATION,Manifest.permission.ACCESS_COARSE_LOCATION}, 4);
            Log.d(TAG,"Location Request has been requested");
        }
@@ -291,21 +304,23 @@ public class MainActivity extends AppCompatActivity implements AdapterView.OnIte
         unregisterReceiver(mBroadcastReceiver1);
         unregisterReceiver(mBroadcastReceiver2);
         unregisterReceiver(mBroadcastReceiver3);
+
     }
 
     // When A Device is clicked
     @RequiresApi(api = Build.VERSION_CODES.S)
     @Override
+    // When Device is clicked create a BOND and Start ConnectionService
     public void onItemClick(AdapterView<?> adapterView, View view, int i, long l) {
         // Permission Check for Scan and Connect
         if (ContextCompat.checkSelfPermission(MainActivity.this, Manifest.permission.BLUETOOTH_CONNECT) != PackageManager.PERMISSION_GRANTED  ||
                 ContextCompat.checkSelfPermission(this, Manifest.permission.BLUETOOTH_SCAN) != PackageManager.PERMISSION_GRANTED) {
             ActivityCompat.requestPermissions(MainActivity.this, new String[]{Manifest.permission.BLUETOOTH_CONNECT,Manifest.permission.BLUETOOTH_SCAN}, 1);
         }
+
         // Always Cancel Discovery as it is memory intensive
         if (ContextCompat.checkSelfPermission(MainActivity.this, Manifest.permission.BLUETOOTH_SCAN) == PackageManager.PERMISSION_GRANTED){
             BA.cancelDiscovery();
-            Log.d(TAG, "OnItemClick: Device Has been Clicked On");
         }
 
         if (ContextCompat.checkSelfPermission(MainActivity.this, Manifest.permission.BLUETOOTH_CONNECT) == PackageManager.PERMISSION_GRANTED) {
@@ -323,20 +338,47 @@ public class MainActivity extends AppCompatActivity implements AdapterView.OnIte
             Toast.makeText(this, "Pairing with:"+ deviceName, Toast.LENGTH_SHORT).show();
             BTDevices.get(i).createBond();
 
+            //Start ConnectionService, Ensure BT device is assigned first
+            mBTDevice = BTDevices.get(i);
+            mBluetoothConnection = new BluetoothConnectionService(MainActivity.this);
+            //Connection WIll Start and the ACCEPTTHREAD will sit there waiting for connection until we Bond state is BONDED.
+            // This will initiate the STARTCONNECTION Method that will try connect to the other devices Accept thread.
+            //Once Completed the CONNECTEDTHREAD Will start
+            //Now data can start being sent back and forward.
+
         }
 
+    }
+
+    //create method for starting connection
+    //connection will fail and app will crash if  haven't paired first
+    @SuppressLint("MissingPermission")
+    public void StartConnection(){ //Pass Device and UUID
+        startBTConnection(mBTDevice,MY_UUID_INSECURE);
+        Toast.makeText(this, "Connection Starting with" + mBTDevice.getName(), Toast.LENGTH_SHORT).show();
+        OpenDataDisplay(); // Open new page *** might not work CHECK
     }
 
     // Starting the Connection to the device.
         public void startBTConnection(BluetoothDevice device, UUID uuid){
             Log.d(TAG,"StartBTConnection: Initializing RFCOM Bluetooth Connection");
-            mBluetoothConnection.startClient(device,uuid);
+            mBluetoothConnection.startClient(device,uuid); // Calls Start Client Thread in Connection service that will Start the ConnectThread method
         }
+    //Sending Data (Bytes)
+    public void SendData (byte [] data){
+        mBluetoothConnection.write(data);
+    }
+    //Need to call StartBtConnection somewhere to start client
+
+
+
 
     // UPDATE: Preparing New activity once ESP32 is connected to display data
     public void OpenDataDisplay (){
         Intent dataintent =new Intent(this, DataDisplay.class);
         startActivity(dataintent);
     }
+
+
 }
 

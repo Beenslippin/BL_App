@@ -37,6 +37,7 @@ public class BluetoothConnectionService {
     public BluetoothConnectionService(Context context) {
        mContext =context;
         BA = BluetoothAdapter.getDefaultAdapter();
+        start(); // This will initiate our AcceptThread
     }
 
     /**
