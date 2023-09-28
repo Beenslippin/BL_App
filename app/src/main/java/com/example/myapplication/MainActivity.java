@@ -2,7 +2,9 @@ package com.example.myapplication;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.RequiresApi;
+import androidx.appcompat.app.AlertDialog;
 import androidx.appcompat.app.AppCompatActivity;
+import androidx.appcompat.widget.Toolbar;
 import androidx.core.app.ActivityCompat;
 import androidx.core.content.ContextCompat;
 
@@ -12,6 +14,7 @@ import android.bluetooth.BluetoothAdapter;
 import android.bluetooth.BluetoothDevice;
 import android.content.BroadcastReceiver;
 import android.content.Context;
+import android.content.DialogInterface;
 import android.content.Intent;
 import android.content.IntentFilter;
 
@@ -25,27 +28,24 @@ import android.widget.ListView;
 import android.widget.TextView;
 import android.widget.Toast;
 
-import java.nio.charset.Charset;
 import java.util.ArrayList;
 import java.util.UUID;
 
 public class MainActivity extends AppCompatActivity implements AdapterView.OnItemClickListener {
     private static final String TAG = "MainActivity";
 
-    public MainActivity(){ // Initiating Permissions Checks On Start up, Might need to be changed if not Working
-        checkBTPermissions();
-        if (!BA.isEnabled()) {
-            enableDisableBT();
-            Log.d(TAG, "OnClick: EnablingBluetooth and Requesting permission");
-        }
-    }
+//    public MainActivity(){ // Initiating Permissions Checks On Start up, Might need to be changed if not Working
+//        checkBTPermissions();
+//        if (!BA.isEnabled()) {
+//            enableDisableBT();
+//            Log.d(TAG, "OnClick: EnablingBluetooth and Requesting permission");
+//        }
+//    }
     TextView ListTxt;
     ListView listview;
     BluetoothAdapter BA;
     public ArrayList<BluetoothDevice> BTDevices = new ArrayList<>();
     public DeviceListAdapter DLA;
-
-
     BluetoothConnectionService mBluetoothConnection;
      private static final UUID MY_UUID_INSECURE =
                 UUID.fromString("8ce255c0-200a-11e0-ac64-0800200c9a66"); //Unique identifier@Override
@@ -57,6 +57,8 @@ public class MainActivity extends AppCompatActivity implements AdapterView.OnIte
         // Applications
         ListTxt = findViewById(R.id.ListTxt);
         listview = findViewById(R.id.listview);
+        Toolbar toolbar = findViewById(R.id.mytoolbar);
+        setSupportActionBar(toolbar);
         BTDevices = new ArrayList<>();
 
         //Intent filter for pairing of device
@@ -70,6 +72,7 @@ public class MainActivity extends AppCompatActivity implements AdapterView.OnIte
         listview.setOnItemClickListener(MainActivity.this);
 
     }
+
 
     // PERMISSION GRANTING:
     //Granting or Requesting permission as Google play SDK > 31 run time permission security update
@@ -259,7 +262,28 @@ public class MainActivity extends AppCompatActivity implements AdapterView.OnIte
                     if (device1.getBondState() == BluetoothDevice.BOND_BONDED) {
                         Log.d(TAG, "BroadcastReceiver: BOND_BONDED");
                         mBTDevice = device1; //Assign global BTdevice to the Device its Paired with
-                        StartConnection(); //*** CHECK MIGHT NOT WORK
+
+                        // Creating a Pop up box to commence the connection to allow for Connect Thread to commence
+                        AlertDialog.Builder builder = new AlertDialog.Builder(MainActivity.this);
+                        builder.setTitle("Start Connection");
+                        builder.setMessage("Would you like to Start the Connection");
+                        //If Start clicked Start connection clicked otherwise close dialog box and close broadcast.
+                        builder.setPositiveButton("Start", new DialogInterface.OnClickListener() {
+                            @Override
+                            public void onClick(DialogInterface dialog, int which) {
+                                StartConnection(); //*** CHECK MIGHT NOT WORK
+                            }
+                        });
+                        builder.setNegativeButton("Cancel", new DialogInterface.OnClickListener() {
+                            @Override
+                            public void onClick(DialogInterface dialog, int which) {
+                                dialog.dismiss();
+                                onDestroy(); // May not need this.
+                            }
+                        });
+
+                        AlertDialog dialog = builder.create();
+                        dialog.show();
                     }
                     //case 2: Creating a Bond
                     if (device1.getBondState() == BluetoothDevice.BOND_BONDED) {
@@ -370,9 +394,6 @@ public class MainActivity extends AppCompatActivity implements AdapterView.OnIte
     }
     //Need to call StartBtConnection somewhere to start client
 
-
-
-
     // UPDATE: Preparing New activity once ESP32 is connected to display data
     public void OpenDataDisplay (){
         Intent dataintent =new Intent(this, DataDisplay.class);
@@ -382,3 +403,7 @@ public class MainActivity extends AppCompatActivity implements AdapterView.OnIte
 
 }
 
+// To Do:
+// Filter for only ESP32 SONIC BOOM
+// Take data and display on Datadisplay
+// Send data back to ESP32

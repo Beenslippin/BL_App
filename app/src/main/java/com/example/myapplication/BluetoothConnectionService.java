@@ -6,9 +6,12 @@ import android.bluetooth.BluetoothDevice;
 import android.bluetooth.BluetoothServerSocket;
 import android.bluetooth.BluetoothSocket;
 import android.content.Context;
+import android.content.Intent;
 import android.util.Log;
 import android.widget.ProgressBar;
 import android.widget.Toast;
+
+import androidx.localbroadcastmanager.content.LocalBroadcastManager;
 
 import java.io.IOException;
 import java.io.InputStream;
@@ -152,7 +155,7 @@ public class BluetoothConnectionService {
     }
 
     /**
-     * Start the chat service. Specifically start AcceptThread to begin a
+     * Start the connection for data transfer. Specifically start AcceptThread to begin a
      * session in listening (server) mode. Called by the Activity onResume()
      */
     public synchronized void start() { //used to initiate Accept thread.
@@ -225,6 +228,12 @@ public class BluetoothConnectionService {
                     bytes = mmInStream.read(buffer);
                     String incomingMessage = new String(buffer, 0 , bytes); // Convert Byte to a string.
                     Log.d(TAG,"InputStream: " + incomingMessage);
+
+                    //Intent to transfer the data to the MainActivity
+                    Intent DataINintent = new Intent("DataIn");
+                    DataINintent.putExtra("The Data:", incomingMessage);
+                    LocalBroadcastManager.getInstance(mContext).sendBroadcast(DataINintent);
+
                 } catch (IOException e) {
                     Log.e(TAG, "READING: Error when reading Input Stream " + e.getMessage());
                     break;
