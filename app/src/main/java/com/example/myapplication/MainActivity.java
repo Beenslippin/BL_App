@@ -231,12 +231,15 @@ public class MainActivity extends AppCompatActivity implements AdapterView.OnIte
                     // Discovery has found a device. Get the BluetoothDevice
                     // object and its info from the Intent.
                     BluetoothDevice device = intent.getParcelableExtra(BluetoothDevice.EXTRA_DEVICE); // EXTRA = Parcel device, allows you to store device
-                    BTDevices.add(device);
+                    if (device != null && "SonicBoom".equals(device.getName())){
+                        BTDevices.add(device);
 
-                    assert device != null;
-                    Log.d(TAG, "OnReceive:" + device.getName() + ": " + device.getAddress());
-                    DLA = new DeviceListAdapter(context, R.layout.device_adapter_view, BTDevices);
-                    listview.setAdapter(DLA);
+                        assert device != null;
+                        Log.d(TAG, "OnReceive:" + device.getName() + ": " + device.getAddress());
+                        DLA = new DeviceListAdapter(context, R.layout.device_adapter_view, BTDevices);
+                        listview.setAdapter(DLA);
+                    }
+
                 }
             }
         }

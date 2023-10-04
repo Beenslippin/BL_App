@@ -1,6 +1,7 @@
 package com.example.myapplication;
 
 
+import android.annotation.SuppressLint;
 import android.bluetooth.BluetoothAdapter;
 import android.bluetooth.BluetoothDevice;
 import android.bluetooth.BluetoothServerSocket;
@@ -113,6 +114,7 @@ public class BluetoothConnectionService {
         }
 
 
+        @SuppressLint("MissingPermission")
         public void run(){ //Will automatically run/execute when a ConnectThread object or AcceptThread object is created
 
             BluetoothSocket tmp = null;
@@ -200,7 +202,7 @@ public class BluetoothConnectionService {
             OutputStream tmpOut = null;
 
             //Connection has been established
-            Toast.makeText(mContext, "Connection has been made", Toast.LENGTH_SHORT).show();
+           Toast.makeText(mContext, "Connection has been made", Toast.LENGTH_SHORT).show();
 
             try {
                 tmpIn = mmSocket.getInputStream();
