@@ -21,6 +21,7 @@ import android.content.IntentFilter;
 import android.content.pm.PackageManager;
 import android.os.Build;
 import android.os.Bundle;
+import android.os.Handler;
 import android.util.Log;
 import android.view.View;
 import android.widget.AdapterView;
@@ -46,9 +47,11 @@ public class MainActivity extends AppCompatActivity implements AdapterView.OnIte
     BluetoothAdapter BA;
     public ArrayList<BluetoothDevice> BTDevices = new ArrayList<>();
     public DeviceListAdapter DLA;
-    BluetoothConnectionService mBluetoothConnection;
+    BluetoothConnectionService mBluetoothConnection; // Declaring the Service class to pass back and fourth
+
+    private final Handler Timer = new Handler();
      private static final UUID MY_UUID_INSECURE =
-                UUID.fromString("8ce255c0-200a-11e0-ac64-0800200c9a66"); //Unique identifier@Override
+                UUID.fromString("00001101-0000-1000-8000-00805F9B34FB"); //Unique identifier@Override
     BluetoothDevice mBTDevice;
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -70,6 +73,7 @@ public class MainActivity extends AppCompatActivity implements AdapterView.OnIte
 
         //Item Listener when Device displayed is clicked
         listview.setOnItemClickListener(MainActivity.this);
+
 
     }
 
@@ -251,6 +255,7 @@ public class MainActivity extends AppCompatActivity implements AdapterView.OnIte
         @Override
         public void onReceive(Context context, Intent intent) {
             final String action = intent.getAction();
+
             if (action.equals(BluetoothDevice.ACTION_BOND_STATE_CHANGED)) {
                 BluetoothDevice device1 = intent.getParcelableExtra(BluetoothDevice.EXTRA_DEVICE);
                 //3 possible cases
@@ -261,39 +266,19 @@ public class MainActivity extends AppCompatActivity implements AdapterView.OnIte
                 }
                 if (ContextCompat.checkSelfPermission(MainActivity.this, Manifest.permission.BLUETOOTH_CONNECT) == PackageManager.PERMISSION_GRANTED) {
 
+
                     //When a Bond is created (Pairing is Initialized) these if Statements will be executed
                     if (device1.getBondState() == BluetoothDevice.BOND_BONDED) {
                         Log.d(TAG, "BroadcastReceiver: BOND_BONDED");
                         mBTDevice = device1; //Assign global BTdevice to the Device its Paired with
-
-                        // Creating a Pop up box to commence the connection to allow for Connect Thread to commence
-                        AlertDialog.Builder builder = new AlertDialog.Builder(MainActivity.this);
-                        builder.setTitle("Start Connection");
-                        builder.setMessage("Would you like to Start the Connection");
-                        //If Start clicked Start connection clicked otherwise close dialog box and close broadcast.
-                        builder.setPositiveButton("Start", new DialogInterface.OnClickListener() {
-                            @Override
-                            public void onClick(DialogInterface dialog, int which) {
-                                StartConnection(); //*** CHECK MIGHT NOT WORK
-                            }
-                        });
-                        builder.setNegativeButton("Cancel", new DialogInterface.OnClickListener() {
-                            @Override
-                            public void onClick(DialogInterface dialog, int which) {
-                                dialog.dismiss();
-                                onDestroy(); // May not need this.
-                            }
-                        });
-
-                        AlertDialog dialog = builder.create();
-                        dialog.show();
+                        StartConnection();
                     }
                     //case 2: Creating a Bond
-                    if (device1.getBondState() == BluetoothDevice.BOND_BONDED) {
+                    if (device1.getBondState() == BluetoothDevice.BOND_BONDING) {
                         Log.d(TAG, "BroadcastReceiver: BOND_BONDING");
                     }
                     //case 3 Bond is Broken
-                    if (device1.getBondState() == BluetoothDevice.BOND_BONDED) {
+                    if (device1.getBondState() == BluetoothDevice.BOND_NONE) {
                         Log.d(TAG, "BroadcastReceiver: BOND_NONE");
                     }
                 }
@@ -331,7 +316,6 @@ public class MainActivity extends AppCompatActivity implements AdapterView.OnIte
         unregisterReceiver(mBroadcastReceiver1);
         unregisterReceiver(mBroadcastReceiver2);
         unregisterReceiver(mBroadcastReceiver3);
-
     }
 
     // When A Device is clicked
@@ -360,40 +344,66 @@ public class MainActivity extends AppCompatActivity implements AdapterView.OnIte
             Log.d(TAG, "OnItemClick: Device Name" + deviceName);
             Log.d(TAG, "OnItemClick: Device Address" + DeviceAddress);
 
-            //Create a Bond
-            Log.d(TAG, "Pairing with" + deviceName);
-            Toast.makeText(this, "Pairing with:"+ deviceName, Toast.LENGTH_SHORT).show();
-            BTDevices.get(i).createBond();
 
-            //Start ConnectionService, Ensure BT device is assigned first
+                // Device is not paired, initiate pairing
+                Log.d(TAG, "Pairing with " + deviceName);
+                Toast.makeText(this, "Pairing with: " + deviceName, Toast.LENGTH_SHORT).show();
+                BTDevices.get(i).createBond();
+
+            // Start ConnectionService, Ensure BT device is assigned first
             mBTDevice = BTDevices.get(i);
             mBluetoothConnection = new BluetoothConnectionService(MainActivity.this);
-            //Connection WIll Start and the ACCEPTTHREAD will sit there waiting for connection until we Bond state is BONDED.
+            // Connection WIll Start and the ACCEPTTHREAD will sit there waiting for connection until we Bond state is BONDED.
             // This will initiate the STARTCONNECTION Method that will try connect to the other devices Accept thread.
-            //Once Completed the CONNECTEDTHREAD Will start
-            //Now data can start being sent back and forward.
+            // Once Completed the CONNECTEDTHREAD Will start
+            // Now data can start being sent back and forward.
 
         }
 
     }
 
-    //create method for starting connection
-    //connection will fail and app will crash if  haven't paired first
+    // Create method for starting connection
+    // Connection will fail and app will crash if  haven't paired first
     @SuppressLint("MissingPermission")
     public void StartConnection(){ //Pass Device and UUID
-        startBTConnection(mBTDevice,MY_UUID_INSECURE);
-        Toast.makeText(this, "Connection Starting with" + mBTDevice.getName(), Toast.LENGTH_SHORT).show();
-        OpenDataDisplay(); // Open new page *** might not work CHECK
+
+                // Creating a Pop up box to commence the connection to allow for Connect Thread to commence
+                AlertDialog.Builder builder = new AlertDialog.Builder(MainActivity.this);
+                builder.setTitle("Start Connection");
+                builder.setMessage("Would you like to Start the Connection");
+                //If Start clicked Start connection clicked otherwise close dialog box and close broadcast.
+                builder.setPositiveButton("Start", new DialogInterface.OnClickListener() {
+                    @Override
+                    public void onClick(DialogInterface dialog, int which) {
+                        startBTConnection(mBTDevice,MY_UUID_INSECURE);
+                        OpenDataDisplay(); // Open new page *** might not work CHECK//*** CHECK MIGHT NOT WORK
+                    }
+                });
+                builder.setNegativeButton("Cancel", new DialogInterface.OnClickListener() {
+                    @Override
+                    public void onClick(DialogInterface dialog, int which) {
+                        dialog.dismiss();
+                        onDestroy(); // May not need this.
+                    }
+                });
+                AlertDialog dialog = builder.create();
+                dialog.show();
     }
 
+
     // Starting the Connection to the device.
+        @SuppressLint("MissingPermission")
         public void startBTConnection(BluetoothDevice device, UUID uuid){
             Log.d(TAG,"StartBTConnection: Initializing RFCOM Bluetooth Connection");
+            Toast.makeText(this, "Connection Starting with" + mBTDevice.getName(), Toast.LENGTH_SHORT).show();
             mBluetoothConnection.startClient(device,uuid); // Calls Start Client Thread in Connection service that will Start the ConnectThread method
         }
     //Sending Data (Bytes)
+
+
     public void SendData (byte [] data){
         mBluetoothConnection.write(data);
+
     }
     //Need to call StartBtConnection somewhere to start client
 

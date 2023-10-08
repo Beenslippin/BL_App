@@ -8,6 +8,7 @@ import android.bluetooth.BluetoothServerSocket;
 import android.bluetooth.BluetoothSocket;
 import android.content.Context;
 import android.content.Intent;
+import android.content.SharedPreferences;
 import android.util.Log;
 import android.widget.ProgressBar;
 import android.widget.Toast;
@@ -24,16 +25,17 @@ public class BluetoothConnectionService {
     private static final String TAG = "BluetoothConnectionService";
     private static final String appName = "SonicAPP";
     private static final UUID MY_UUID_INSECURE =
-            UUID.fromString("8ce255c0-200a-11e0-ac64-0800200c9a66"); //Unique identifier
+            UUID.fromString("00001101-0000-1000-8000-00805F9B34FB"); //Unique identifier
     private final BluetoothAdapter BA;
     Context mContext;
     private AcceptThread mInsecureAcceptThread;
     private ConnectThread mConnectThread;
     private BluetoothDevice mmDevice;
-    private UUID deviceUUID; //global UUID
 
+    private UUID deviceUUID; //global UUID
     private ConnectedThread mConnectedThread;
-    ProgressBar mProgressBar;
+
+
 
     // This Service will use Bluetooth Sockets.
     // Bluetooth sockets is the connection point that allows for an application to exchange data
@@ -54,12 +56,11 @@ public class BluetoothConnectionService {
         private final BluetoothServerSocket mServerSocket;
 
         //creating a new listening server socket
-
+        @SuppressLint("MissingPermission")
         public AcceptThread(){
             BluetoothServerSocket tmp = null;
             try{
-
-                tmp =BA.listenUsingInsecureRfcommWithServiceRecord(appName,MY_UUID_INSECURE);
+                tmp = BA.listenUsingInsecureRfcommWithServiceRecord(appName,MY_UUID_INSECURE);
                 Log.d(TAG,"AcceptThread: Setting up server using" + MY_UUID_INSECURE);
 
             } catch (IOException e) {
@@ -80,9 +81,13 @@ public class BluetoothConnectionService {
                 Log.d(TAG, "run:RFCOM server socket start....");
 
                 socket = mServerSocket.accept(); //sitting here till connection AYE O-KAY
+
+                Log.d(TAG, "run: RFCOM server socket accepted connection.");
+
             }catch(IOException e){
                 Log.e(TAG, "AcceptThread: IOException: " + e.getMessage() );
             }
+
             if(socket != null){
                 connected(socket,mmDevice);
             }
@@ -113,7 +118,6 @@ public class BluetoothConnectionService {
             deviceUUID = uuid; //Unique ID
         }
 
-
         @SuppressLint("MissingPermission")
         public void run(){ //Will automatically run/execute when a ConnectThread object or AcceptThread object is created
 
@@ -130,7 +134,6 @@ public class BluetoothConnectionService {
             mSocket = tmp;
 
             BA.cancelDiscovery(); // Canceling discovery as memory intensive
-
 
             try { // this is a blocking call and will only return on a successful connection or an exception
                 mSocket.connect(); // MAKING CONNECTION TO BLUETOOTH SOCKET
@@ -155,7 +158,6 @@ public class BluetoothConnectionService {
             }
         }
     }
-
     /**
      * Start the connection for data transfer. Specifically start AcceptThread to begin a
      * session in listening (server) mode. Called by the Activity onResume()
@@ -202,13 +204,18 @@ public class BluetoothConnectionService {
             OutputStream tmpOut = null;
 
             //Connection has been established
-           Toast.makeText(mContext, "Connection has been made", Toast.LENGTH_SHORT).show();
+//            try {
+//                Toast.makeText(mContext, "Connection has been made", Toast.LENGTH_SHORT).show();
+//            } catch(NullPointerException e ){
+//                e.printStackTrace();
+//            }
 
             try {
                 tmpIn = mmSocket.getInputStream();
                 tmpOut = mmSocket.getOutputStream();
             } catch (IOException e) {
-                e.printStackTrace();
+                Log.e(TAG, "Error occurred when creating stream", e);
+
             }
 
             mmInStream = tmpIn;
@@ -228,13 +235,18 @@ public class BluetoothConnectionService {
             while(true){
                 try {
                     bytes = mmInStream.read(buffer);
-                    String incomingMessage = new String(buffer, 0 , bytes); // Convert Byte to a string.
-                    Log.d(TAG,"InputStream: " + incomingMessage);
 
-                    //Intent to transfer the data to the MainActivity
-                    Intent DataINintent = new Intent("DataIn");
-                    DataINintent.putExtra("The Data:", incomingMessage);
-                    LocalBroadcastManager.getInstance(mContext).sendBroadcast(DataINintent);
+                    if (bytes > 0){
+                        int incomingMessage = buffer[0] & 0xFF;
+                        //  String incomingMessage = new String(buffer, 0 , bytes); // Convert Byte to a string.
+                        Log.d(TAG,"InputStream: " + incomingMessage);
+
+                        //Intent to transfer the data to the MainActivity
+                        Intent DataINintent = new Intent("DataIn");
+                        DataINintent.putExtra("The Data:", incomingMessage);
+                        LocalBroadcastManager.getInstance(mContext).sendBroadcast(DataINintent);
+                    }
+
 
                 } catch (IOException e) {
                     Log.e(TAG, "READING: Error when reading Input Stream " + e.getMessage());
@@ -246,7 +258,7 @@ public class BluetoothConnectionService {
         // Responsible of writing to the Output stream
         // Called from Main activity to send data to the Device
         public void write(byte[] bytes){
-        String text = new String (bytes, Charset.defaultCharset()); // convert bytes to a string before sending
+        //String text = new String (bytes, Charset.defaultCharset()); // convert bytes to a string before sending //**MAY NOT NEED THIS AS ESP32 WILL BE SET FOR RECEIVING BINARY BYTES**
         Log.d(TAG,"WRITE: Writing to output stream");
             try {
                 mmOutStream.write(bytes);
