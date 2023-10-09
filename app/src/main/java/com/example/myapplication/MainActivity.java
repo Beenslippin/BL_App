@@ -34,7 +34,6 @@ import java.util.UUID;
 
 public class MainActivity extends AppCompatActivity implements AdapterView.OnItemClickListener {
     private static final String TAG = "MainActivity";
-
 //    public MainActivity(){ // Initiating Permissions Checks On Start up, Might need to be changed if not Working
 //        checkBTPermissions();
 //        if (!BA.isEnabled()) {
@@ -74,9 +73,7 @@ public class MainActivity extends AppCompatActivity implements AdapterView.OnIte
         //Item Listener when Device displayed is clicked
         listview.setOnItemClickListener(MainActivity.this);
 
-
     }
-
 
     // PERMISSION GRANTING:
     //Granting or Requesting permission as Google play SDK > 31 run time permission security update
@@ -400,6 +397,11 @@ public class MainActivity extends AppCompatActivity implements AdapterView.OnIte
         }
     //Sending Data (Bytes)
 
+    public void CommandSection(){
+        byte C1 = 10;
+        byte [] DataToSend ={C1};
+        SendData(DataToSend);
+    }
 
     public void SendData (byte [] data){
         mBluetoothConnection.write(data);

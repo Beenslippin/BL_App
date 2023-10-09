@@ -38,6 +38,7 @@ public class DataDisplay extends AppCompatActivity {
         sonicdata = findViewById(R.id.SonicData);
         DataIn = new StringBuilder();
         LocalBroadcastManager.getInstance(this).registerReceiver(mReceiver, new IntentFilter("DataIn")); // Need to set braodcast receiver.
+        mBluetoothConnection = new BluetoothConnectionService(DataDisplay.this);
 
 
     }

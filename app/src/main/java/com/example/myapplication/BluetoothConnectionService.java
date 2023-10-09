@@ -215,7 +215,6 @@ public class BluetoothConnectionService {
                 tmpOut = mmSocket.getOutputStream();
             } catch (IOException e) {
                 Log.e(TAG, "Error occurred when creating stream", e);
-
             }
 
             mmInStream = tmpIn;
@@ -236,7 +235,6 @@ public class BluetoothConnectionService {
                 try {
                     bytes = mmInStream.read(buffer);
 
-                    if (bytes > 0){
                         int incomingMessage = buffer[0] & 0xFF;
                         //  String incomingMessage = new String(buffer, 0 , bytes); // Convert Byte to a string.
                         Log.d(TAG,"InputStream: " + incomingMessage);
@@ -245,7 +243,7 @@ public class BluetoothConnectionService {
                         Intent DataINintent = new Intent("DataIn");
                         DataINintent.putExtra("The Data:", incomingMessage);
                         LocalBroadcastManager.getInstance(mContext).sendBroadcast(DataINintent);
-                    }
+
 
 
                 } catch (IOException e) {
@@ -289,8 +287,13 @@ public class BluetoothConnectionService {
         // Create a temporary ConnectedThread object
         ConnectedThread r;
 
+        try{
+            Log.d(TAG,"WRITE: Write Called");
+            mConnectedThread.write(out);
+        }
+        catch (NullPointerException e )
+        { e.printStackTrace();}
         // Then Synchronise a copy of the ConnectedThread & Perform Write
-        Log.d(TAG,"WRITE: Write Called");
-        mConnectedThread.write(out);
+
     }
 }
