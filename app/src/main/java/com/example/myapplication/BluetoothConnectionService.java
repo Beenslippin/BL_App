@@ -19,6 +19,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.nio.charset.Charset;
+import java.util.Arrays;
 import java.util.UUID;
 
 public class BluetoothConnectionService {
@@ -31,9 +32,10 @@ public class BluetoothConnectionService {
     private AcceptThread mInsecureAcceptThread;
     private ConnectThread mConnectThread;
     private BluetoothDevice mmDevice;
-
     private UUID deviceUUID; //global UUID
     private ConnectedThread mConnectedThread;
+
+    private final byte[] buffer = new byte[100000]; //Buffer store for input stream
 
 
 
@@ -224,7 +226,7 @@ public class BluetoothConnectionService {
             //Creating a Byte Array object that will collect the input from the input stream
 
             //Buffer store for input stream
-            byte [] buffer = new byte[1024];
+            //byte [] buffer = new byte[100000];
 
             // Integer object that will read the input from the input stream
             // Return from read()
@@ -235,6 +237,7 @@ public class BluetoothConnectionService {
                 try {
                     bytes = mmInStream.read(buffer);
 
+                    if (bytes > 0){
                         int incomingMessage = buffer[0] & 0xFF;
                         //  String incomingMessage = new String(buffer, 0 , bytes); // Convert Byte to a string.
                         Log.d(TAG,"InputStream: " + incomingMessage);
@@ -243,15 +246,18 @@ public class BluetoothConnectionService {
                         Intent DataINintent = new Intent("DataIn");
                         DataINintent.putExtra("The Data:", incomingMessage);
                         LocalBroadcastManager.getInstance(mContext).sendBroadcast(DataINintent);
-
-
+                    }
 
                 } catch (IOException e) {
                     Log.e(TAG, "READING: Error when reading Input Stream " + e.getMessage());
                     break;
                 }
             }
+
         }
+
+
+
         //WRITE METHOD:
         // Responsible of writing to the Output stream
         // Called from Main activity to send data to the Device
@@ -295,5 +301,10 @@ public class BluetoothConnectionService {
         { e.printStackTrace();}
         // Then Synchronise a copy of the ConnectedThread & Perform Write
 
+    }
+
+    public void resetBuffer(){
+        // Reset the buffer to its initial state
+        Arrays.fill(buffer, (byte) 0);
     }
 }

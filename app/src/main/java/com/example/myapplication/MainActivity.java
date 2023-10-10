@@ -26,6 +26,7 @@ import android.util.Log;
 import android.view.View;
 import android.widget.AdapterView;
 import android.widget.ListView;
+import android.widget.ProgressBar;
 import android.widget.TextView;
 import android.widget.Toast;
 
@@ -46,7 +47,8 @@ public class MainActivity extends AppCompatActivity implements AdapterView.OnIte
     BluetoothAdapter BA;
     public ArrayList<BluetoothDevice> BTDevices = new ArrayList<>();
     public DeviceListAdapter DLA;
-    BluetoothConnectionService mBluetoothConnection; // Declaring the Service class to pass back and fourth
+    BluetoothConnectionService mBluetoothConnection;
+    ProgressBar progressBar;// Declaring the Service class to pass back and fourth
 
     private final Handler Timer = new Handler();
      private static final UUID MY_UUID_INSECURE =
@@ -72,6 +74,8 @@ public class MainActivity extends AppCompatActivity implements AdapterView.OnIte
 
         //Item Listener when Device displayed is clicked
         listview.setOnItemClickListener(MainActivity.this);
+
+        progressBar = findViewById(R.id.progressBar);
 
     }
 
@@ -186,6 +190,7 @@ public class MainActivity extends AppCompatActivity implements AdapterView.OnIte
                 IntentFilter discoverDeviceIntent = new IntentFilter(BluetoothDevice.ACTION_FOUND);
                 registerReceiver(mBroadcastReceiver2, discoverDeviceIntent);
 
+
             }
         }
     }
@@ -241,6 +246,7 @@ public class MainActivity extends AppCompatActivity implements AdapterView.OnIte
                         listview.setAdapter(DLA);
                     }
 
+
                 }
             }
         }
@@ -268,14 +274,17 @@ public class MainActivity extends AppCompatActivity implements AdapterView.OnIte
                     if (device1.getBondState() == BluetoothDevice.BOND_BONDED) {
                         Log.d(TAG, "BroadcastReceiver: BOND_BONDED");
                         mBTDevice = device1; //Assign global BTdevice to the Device its Paired with
+                        progressBar.setVisibility(View.INVISIBLE);
                         StartConnection();
                     }
                     //case 2: Creating a Bond
                     if (device1.getBondState() == BluetoothDevice.BOND_BONDING) {
                         Log.d(TAG, "BroadcastReceiver: BOND_BONDING");
+                        progressBar.setVisibility(View.VISIBLE);
                     }
                     //case 3 Bond is Broken
                     if (device1.getBondState() == BluetoothDevice.BOND_NONE) {
+                        progressBar.setVisibility(View.INVISIBLE);
                         Log.d(TAG, "BroadcastReceiver: BOND_NONE");
                     }
                 }
@@ -313,6 +322,7 @@ public class MainActivity extends AppCompatActivity implements AdapterView.OnIte
         unregisterReceiver(mBroadcastReceiver1);
         unregisterReceiver(mBroadcastReceiver2);
         unregisterReceiver(mBroadcastReceiver3);
+        mBluetoothConnection.resetBuffer();
     }
 
     // When A Device is clicked
@@ -347,6 +357,9 @@ public class MainActivity extends AppCompatActivity implements AdapterView.OnIte
                 Toast.makeText(this, "Pairing with: " + deviceName, Toast.LENGTH_SHORT).show();
                 BTDevices.get(i).createBond();
 
+                if(BTDevices.get(i).getBondState()==BluetoothDevice.BOND_BONDED){
+                    StartConnection();
+                }
             // Start ConnectionService, Ensure BT device is assigned first
             mBTDevice = BTDevices.get(i);
             mBluetoothConnection = new BluetoothConnectionService(MainActivity.this);
